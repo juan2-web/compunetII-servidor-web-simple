@@ -3,14 +3,18 @@
 import java.io.*;
 import java.net.*;
 import java.util.*;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 
 public final class WebServer {
     public static void main(String argv[]) throws Exception {
         // numero de puerto
         int puerto = 6789;
-        int cont =0;
         // establecer el socket de escucha
         ServerSocket socketDeEscucha = new ServerSocket(puerto);
+        // agregar manejo de hilos
+        ThreadPoolExecutor executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(5);
         // procesar las solicitudes http en un ciclo infinito
         while (true) {
             //escuchar solicitudes de conexion tcp
@@ -19,10 +23,9 @@ public final class WebServer {
             SolicitudHttp solicitud = new SolicitudHttp(socketDeConexion);
             //crear un nuevo hilo para la solicitud
             Thread hilo = new Thread(solicitud);
-            //iniciar el hilo
-            hilo.start();
-            cont += 1;
-            System.out.println(cont);
+            //ya no tenemos que inicializar el hilo al usar executor (threadpool)
+            //hilo.start();
+            executor.execute(hilo);
         }
     }
 }
