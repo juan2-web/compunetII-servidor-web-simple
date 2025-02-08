@@ -3,7 +3,6 @@
 import java.io.*;
 import java.net.*;
 import java.util.*;
-import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
@@ -21,11 +20,13 @@ public final class WebServer {
             Socket socketDeConexion = socketDeEscucha.accept();
             //objeto para procesar el mensaje de solicitud http
             SolicitudHttp solicitud = new SolicitudHttp(socketDeConexion);
+            // al parecer no es necesario crear manualmente un hilo 
+            // cuando se usa threadpool executor
             //crear un nuevo hilo para la solicitud
-            Thread hilo = new Thread(solicitud);
+            //Thread hilo = new Thread(solicitud);
             //ya no tenemos que inicializar el hilo al usar executor (threadpool)
             //hilo.start();
-            executor.execute(hilo);
+            executor.execute(solicitud);
         }
     }
 }
@@ -83,12 +84,12 @@ final class SolicitudHttp implements Runnable {
         String cuerpoMensaje = null;
 
         if (existeArchivo) {
-            lineaDeEstado = "200 OK";
+            lineaDeEstado = "HTTP/1.1 200 OK";
             // Cuando el archivo existe, se debe determinar el tipo de archivo MIME y enviar el especificador de tipo MIME apropiado.
             lineaDeTipoContenido =  "Content-type: " + contentType(nombreArchivo) + CRLF;
         } else {
-            lineaDeEstado = "404 Not Found";
-            lineaDeTipoContenido = "";
+            lineaDeEstado = "HTTP/1.1 404 Not Found";
+            lineaDeTipoContenido = "Content-Type: text/html" + CRLF;
             cuerpoMensaje = "<HTML>" + 
                 "<HEAD><TITLE>404 Not Found</TITLE></HEAD>" +
                 "<BODY><b>404</b> Not Found</BODY></HTML>";
@@ -98,7 +99,7 @@ final class SolicitudHttp implements Runnable {
         while ((lineaDelHeader = br.readLine()).length() != 0) {
             System.out.println(lineaDelHeader);
         }
-        os.writeBytes(lineaDeEstado);
+        os.writeBytes(lineaDeEstado + CRLF);
         os.writeBytes(lineaDeTipoContenido);
         //linea en blanco para indicar el final de las lineas del header
         os.writeBytes(CRLF);
@@ -110,9 +111,10 @@ final class SolicitudHttp implements Runnable {
             os.writeBytes(cuerpoMensaje);
         }
         // cierra los streams y el socket
-        //os.close();
-        //br.close();
-        //socket.close();
+        
+        br.close();
+        os.close();
+        socket.close();
     }
 
     private static void enviarBytes(FileInputStream fis, OutputStream os) throws Exception{
